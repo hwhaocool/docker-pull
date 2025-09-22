@@ -13,7 +13,6 @@ import (
 
 	"github.com/imroc/req/v3"
 
-	"github.com/containers/image/v5/docker"
 	"github.com/containers/image/v5/manifest"
 	"github.com/containers/image/v5/pkg/blobinfocache/none"
 	"github.com/containers/image/v5/types"
@@ -52,7 +51,8 @@ func main222(cmd Cmd) {
 	if !strings.HasPrefix(cmd.image, "//") {
 		cmd.image = "//" + cmd.image
 	}
-	ref, err := docker.ParseReference(cmd.image)
+
+	ref, imageinfo, err := ParseImageInfoV2(cmd.image)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func main222(cmd Cmd) {
 
 		// convertToOCIIndex(rawManifest)
 
-		downloadWithList(ref, list, src, ctx)
+		downloadWithList(ref, list, src, ctx, imageinfo)
 
 	default:
 		log.Fatalf("Unsupported manifest type: %s", mediaType)
@@ -153,7 +153,8 @@ func printManifestList(list manifest.Schema2List) {
 	}
 }
 
-func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src types.ImageSource, ctx context.Context) {
+func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src types.ImageSource,
+	ctx context.Context, imageInfo DockerImageV2) {
 
 	for _, m := range list.Manifests {
 
@@ -182,6 +183,7 @@ func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src t
 
 				(&TarInfo{
 					Ref:          ref,
+					ImageInfo:    imageInfo,
 					ConfigDigest: strings.TrimPrefix(man.ConfigDescriptor.Digest.String(), "sha256:"),
 					LayersDigest: func() []string {
 						var layers []string

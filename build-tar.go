@@ -16,6 +16,7 @@ type TarInfo struct {
 	Ref          types.ImageReference
 	ConfigDigest string
 	LayersDigest []string
+	ImageInfo    DockerImageV2
 
 	folderPath string
 }
@@ -69,7 +70,7 @@ func (t *TarInfo) BuildTar() {
 
 func (t *TarInfo) packTar() error {
 
-	tarFilePath := filepath.Join("output", t.Ref.DockerReference().Name()+"_"+t.ConfigDigest+".tar")
+	tarFilePath := t.buildTarName()
 
 	// 检查文件是否已存在
 	if FileExists(tarFilePath) {
@@ -82,6 +83,10 @@ func (t *TarInfo) packTar() error {
 	}
 	fmt.Printf("  Successfully created tar: %s\n", tarFilePath)
 	return nil
+}
+
+func (t *TarInfo) buildTarName() string {
+	return filepath.Join("output", t.Ref.DockerReference().Name()+"_"+t.ConfigDigest+".tar")
 }
 
 func (t *TarInfo) mkdirTmp() error {
@@ -199,11 +204,11 @@ func (t *TarInfo) buildRepositoriesjson() error {
 	//}
 
 	repoName := t.Ref.DockerReference().Name()
-	tag := "latest"
+	tag := t.ImageInfo.Tag
 
 	data := make(map[string]map[string]string)
 	data[repoName] = map[string]string{
-		tag: t.ConfigDigest,
+		tag: SlicesLast(t.LayersDigest),
 	}
 
 	return WriteJsonFile(repoFile, data)

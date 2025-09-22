@@ -11,3 +11,12 @@ func FileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
 }
+
+// SlicesLast 返回切片的最后一个元素，如果切片为空则返回 nil
+func SlicesLast[T any](slice []T) T {
+	if len(slice) == 0 {
+		var zero T
+		return zero
+	}
+	return slice[len(slice)-1]
+}
