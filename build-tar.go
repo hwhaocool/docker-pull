@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -163,7 +162,7 @@ func (t *TarInfo) buildManifestjson() error {
 
 	mainfest := Schema2Manifest{
 		Config:   t.ConfigDigest + ".json",
-		RepoTags: []string{t.Ref.DockerReference().Name() + ":latest"},
+		RepoTags: []string{fmt.Sprintf("%s:%s", t.ImageInfo.Path, t.ImageInfo.Tag)},
 		Layers: func() []string {
 			var layers []string
 			for _, layerDigest := range t.LayersDigest {
@@ -202,7 +201,7 @@ func (t *TarInfo) buildRepositoriesjson() error {
 	//	}
 	//}
 
-	repoName := t.Ref.DockerReference().Name()
+	repoName := t.ImageInfo.Path
 	tag := t.ImageInfo.Tag
 
 	data := make(map[string]map[string]string)
@@ -211,19 +210,4 @@ func (t *TarInfo) buildRepositoriesjson() error {
 	}
 
 	return WriteJsonFile(repoFile, data)
-}
-
-func WriteJsonFile(repoFile *os.File, data any) error {
-
-	jsonData, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %v", err)
-	}
-
-	_, err = repoFile.Write(jsonData)
-	if err != nil {
-		return fmt.Errorf("failed to write JSON data: %v", err)
-	}
-
-	return nil
 }
