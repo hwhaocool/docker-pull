@@ -11,8 +11,6 @@ import (
 
 	"context"
 
-	"github.com/imroc/req/v3"
-
 	"github.com/containers/image/v5/manifest"
 	"github.com/containers/image/v5/pkg/blobinfocache/none"
 	"github.com/containers/image/v5/types"
@@ -29,21 +27,6 @@ func init() {
 
 func DownloadImage(cmd Cmd) {
 
-	ParseImageInfo(cmd.image)
-
-	client := req.C()        // Use C() to create a client.
-	resp, err := client.R(). // Use R() to create a request.
-					Get("https://httpbin.org/uuid")
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(resp)
-
-	main222(cmd)
-
-}
-
-func main222(cmd Cmd) {
 	ctx := context.Background()
 	sysCtx := &types.SystemContext{}
 
@@ -98,14 +81,7 @@ func main222(cmd Cmd) {
 		}
 		printManifestList(list)
 
-		// 转换为 OCI Index
-		// ociIndex, err := manifest.OCI1IndexFromManifest(rawManifest)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-
-		// convertToOCIIndex(rawManifest)
-
+		// 下载
 		downloadWithList(ref, list, src, ctx, imageinfo)
 
 	default:
@@ -166,11 +142,11 @@ func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src t
 
 				log.Println("Downloading manifest for amd64/linux:", m.Digest.String())
 
-				raw, x, err := src.GetManifest(ctx, &m.Digest)
+				// raw是字节数组， 第二个是 content type
+				raw, _, err := src.GetManifest(ctx, &m.Digest)
 				if err != nil {
 					log.Fatal(err)
 				}
-				log.Println("x:", x)
 
 				// 解析为 Docker Schema 2
 				var man manifest.Schema2
@@ -178,9 +154,13 @@ func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src t
 					log.Fatalf("Failed to unmarshal manifest: %v", err)
 				}
 
+				// 下载 config
 				downloadConfigBlob(src, man.ConfigDescriptor, ctx)
+
+				// 下载 layers
 				downloadLayersBlob(src, man.LayersDescriptors, ctx)
 
+				// 构造tar包
 				(&TarInfo{
 					Ref:          ref,
 					ImageInfo:    imageInfo,

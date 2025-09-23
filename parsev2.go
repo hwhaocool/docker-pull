@@ -15,6 +15,7 @@ type DockerImageV2 struct {
 
 	Namespace  string
 	Repository string
+	Name       string
 }
 
 func ParseImageInfoV2(image string) (types.ImageReference, DockerImageV2, error) {
@@ -39,6 +40,8 @@ func ParseImageInfoV2(image string) (types.ImageReference, DockerImageV2, error)
 		repo = strings.Join(parts[1:], "/")
 	}
 
+	name := SlicesLast(parts)
+
 	if tagged, ok := ref.DockerReference().(reference.Tagged); ok {
 		tag = tagged.Tag()
 	}
@@ -49,5 +52,6 @@ func ParseImageInfoV2(image string) (types.ImageReference, DockerImageV2, error)
 		Tag:        tag,
 		Namespace:  ns,
 		Repository: repo,
+		Name:       name,
 	}, nil
 }

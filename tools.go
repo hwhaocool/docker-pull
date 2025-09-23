@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -76,6 +77,21 @@ func CreateTar(srcDir, tarFilePath string) error {
 		log.Fatal(err)
 	}
 	fmt.Println("打包成功: output.tar")
+
+	return nil
+}
+
+func WriteJsonFile(repoFile *os.File, data any) error {
+
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal JSON: %v", err)
+	}
+
+	_, err = repoFile.Write(jsonData)
+	if err != nil {
+		return fmt.Errorf("failed to write JSON data: %v", err)
+	}
 
 	return nil
 }

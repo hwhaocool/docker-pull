@@ -10,11 +10,15 @@ type DockerImage struct {
 	Registry   string
 	Namespace  string
 	Repository string
-	Tag        string
+
 	Size       string
 	Status     string
 	CreateTime string
 	UpdateTime string
+
+	Domain string
+	Path   string
+	Tag    string
 
 	official bool
 	dockerio bool

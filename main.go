@@ -11,9 +11,11 @@ import (
 func main() {
 	var image, proxyAddr, destination string
 
-	flag.StringVar(&image, "image", "demo.52013120.xyz/alpine:3.22.1", "镜像名称")
-	flag.StringVar(&proxyAddr, "proxy", "", "socks5代理地址")
-	flag.StringVar(&destination, "dst", "output", "镜像保存路径")
+	flag.StringVar(&image, "image", "", "镜像名称, 支持如 alpine:3.22.1; nginx; library/nginx:1.20; docker.io/library/nginx:latest; myregistry.com/myproject/myapp:v1.0; myregistry.com:5000/myproject/myapp:v1.0 等格式")
+
+	// TODO: 以后支持代理下载
+	// flag.StringVar(&proxyAddr, "proxy", "", "socks5代理地址")
+	// flag.StringVar(&destination, "dst", "output", "镜像保存路径")
 
 	flag.Parse()
 
@@ -34,53 +36,6 @@ func main() {
 	}
 
 	DownloadImage(cmd)
-
-	// 构建镜像下载URL (简化实现)
-	// 在实际的docker镜像下载中，这会更复杂，需要与Docker Registry API交互
-	// imageURL := fmt.Sprintf("https://registry-1.docker.io/v2/%s/manifests/latest", image)
-
-	// // 创建HTTP客户端
-	// client := &http.Client{}
-
-	// // 如果提供了代理地址，则配置SOCKS5代理
-	// if proxyAddr != "" {
-	// 	dialer, err := proxy.SOCKS5("tcp", proxyAddr, nil, proxy.Direct)
-	// 	if err != nil {
-	// 		log.Fatalf("无法连接到SOCKS5代理: %v", err)
-	// 	}
-
-	// 	httpTransport := &http.Transport{
-	// 		Dial: dialer.Dial,
-	// 	}
-	// 	client.Transport = httpTransport
-	// }
-
-	// // 发送请求下载镜像
-	// resp, err := client.Get(imageURL)
-	// if err != nil {
-	// 	log.Fatalf("下载镜像失败: %v", err)
-	// }
-	// defer resp.Body.Close()
-
-	// if resp.StatusCode != http.StatusOK {
-	// 	log.Fatalf("下载镜像失败，状态码: %d", resp.StatusCode)
-	// }
-
-	// // 创建目标文件
-	// filename := filepath.Join(destination, fmt.Sprintf("%s_manifest.json", image))
-	// file, err := os.Create(filename)
-	// if err != nil {
-	// 	log.Fatalf("创建文件失败: %v", err)
-	// }
-	// defer file.Close()
-
-	// // 将响应内容写入文件
-	// _, err = file.ReadFrom(resp.Body)
-	// if err != nil {
-	// 	log.Fatalf("写入文件失败: %v", err)
-	// }
-
-	// fmt.Printf("镜像 %s 已保存到 %s\n", image, filename)
 
 	fmt.Println("ok")
 }
