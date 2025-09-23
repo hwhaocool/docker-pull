@@ -237,7 +237,7 @@ func downloadBlob(ctx context.Context, src types.ImageSource, desc manifest.Sche
 	tarFilePath := filepath.Join(blobPath, saveProps.name)
 
 	// 检查文件是否已存在
-	if _, err := os.Stat(tarFilePath); err == nil {
+	if FileExists(tarFilePath) {
 		fmt.Printf("Blob already exists, skipping: %s\n", desc.Digest)
 		return nil
 	}
