@@ -1,10 +1,8 @@
 package main
 
 import (
-	"archive/tar"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -86,7 +84,8 @@ func (t *TarInfo) packTar() error {
 }
 
 func (t *TarInfo) buildTarName() string {
-	return filepath.Join("output", t.Ref.DockerReference().Name()+"_"+t.ConfigDigest+".tar")
+	name := fmt.Sprintf("%s_%s_%s.tar", t.ImageInfo.Name, t.ImageInfo.Tag, t.ConfigDigest)
+	return filepath.Join("output", t.ImageInfo.Namespace, t.ImageInfo.Repository, name)
 }
 
 func (t *TarInfo) mkdirTmp() error {
@@ -224,71 +223,6 @@ func WriteJsonFile(repoFile *os.File, data any) error {
 	_, err = repoFile.Write(jsonData)
 	if err != nil {
 		return fmt.Errorf("failed to write JSON data: %v", err)
-	}
-
-	return nil
-}
-
-func CreateTar(srcDir, tarFilePath string) error {
-	// 创建目标目录
-	destDir := filepath.Dir(tarFilePath)
-	if err := os.MkdirAll(destDir, 0755); err != nil {
-		return fmt.Errorf("failed to create destination directory: %v", err)
-	}
-
-	// 创建tar文件
-	tarFile, err := os.Create(tarFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to create tar file: %v", err)
-	}
-	defer tarFile.Close()
-
-	// 创建tar writer
-	tw := tar.NewWriter(tarFile)
-	defer tw.Close()
-
-	// 遍历源目录并添加到tar
-	err = filepath.Walk(srcDir, func(file string, fi os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// 创建tar头
-		header, err := tar.FileInfoHeader(fi, fi.Name())
-		if err != nil {
-			return err
-		}
-
-		// 保持目录结构正确
-		header.Name, err = filepath.Rel(filepath.Dir(srcDir), file)
-		if err != nil {
-			return err
-		}
-
-		// 写入头部信息
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-
-		// 如果是文件而不是目录，则写入内容
-		if !fi.IsDir() {
-			file, err := os.Open(file)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-
-			// 复制文件内容到tar
-			_, err = io.Copy(tw, file)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to create tar: %v", err)
 	}
 
 	return nil

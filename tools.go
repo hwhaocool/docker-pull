@@ -2,7 +2,11 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"path/filepath"
+
+	"github.com/mholt/archiver/v3"
 )
 
 // FileExists 检查文件是否存在于文件系统中
@@ -43,6 +47,35 @@ func CopyFile(src, dst string) error {
 	}
 
 	fmt.Printf("Successfully copied file from [%s] to [%s] \n", src, dst)
+
+	return nil
+}
+
+func CreateTar(srcDir, tarFilePath string) error {
+	log.Println("开始打包目录:", srcDir)
+	// 创建目标目录
+	destDir := filepath.Dir(tarFilePath)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("failed to create destination directory: %v", err)
+	}
+
+	// 读取目录内容并构建文件路径列表
+	entries, err := os.ReadDir(srcDir)
+	if err != nil {
+		return fmt.Errorf("failed to read source directory: %v", err)
+	}
+
+	var files []string
+	for _, entry := range entries {
+		files = append(files, filepath.Join(srcDir, entry.Name()))
+	}
+
+	// 打包目录为 .tar 文件
+	err = archiver.Archive(files, tarFilePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("打包成功: output.tar")
 
 	return nil
 }
