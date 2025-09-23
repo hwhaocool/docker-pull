@@ -1,6 +1,9 @@
 package main
 
-import "os"
+import (
+	"fmt"
+	"os"
+)
 
 // FileExists 检查文件是否存在于文件系统中
 //
@@ -19,4 +22,27 @@ func SlicesLast[T any](slice []T) T {
 		return zero
 	}
 	return slice[len(slice)-1]
+}
+
+func CopyFile(src, dst string) error {
+	input, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("failed to read file: %v", err)
+	}
+
+	// 检查文件是否已存在
+	if FileExists(dst) {
+		fmt.Printf("dst already exists, skipping: %s\n", dst)
+		return nil
+	}
+
+	err = os.WriteFile(dst, input, 0644)
+	if err != nil {
+
+		return fmt.Errorf("failed to write file: %v", err)
+	}
+
+	fmt.Printf("Successfully copied file from [%s] to [%s] \n", src, dst)
+
+	return nil
 }

@@ -229,29 +229,6 @@ func WriteJsonFile(repoFile *os.File, data any) error {
 	return nil
 }
 
-func CopyFile(src, dst string) error {
-	input, err := os.ReadFile(src)
-	if err != nil {
-		return fmt.Errorf("failed to read file: %v", err)
-	}
-
-	// 检查文件是否已存在
-	if FileExists(dst) {
-		fmt.Printf("dst already exists, skipping: %s\n", dst)
-		return nil
-	}
-
-	err = os.WriteFile(dst, input, 0644)
-	if err != nil {
-
-		return fmt.Errorf("failed to write file: %v", err)
-	}
-
-	fmt.Printf("Successfully copied file from [%s] to [%s] \n", src, dst)
-
-	return nil
-}
-
 func CreateTar(srcDir, tarFilePath string) error {
 	// 创建目标目录
 	destDir := filepath.Dir(tarFilePath)
