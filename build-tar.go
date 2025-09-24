@@ -27,6 +27,8 @@ func (t *TarInfo) BuildTar() {
 		return
 	}
 
+	defer t.delTmp()
+
 	// 根目录生成 xx.json
 	err = t.buildConfigjson()
 	if err != nil {
@@ -101,6 +103,13 @@ func (t *TarInfo) mkdirTmp() error {
 	return nil
 }
 
+func (t *TarInfo) delTmp() {
+	err := os.RemoveAll(t.folderPath)
+	if err != nil {
+		log.Println("Warning: failed to delete tmp directory:", err)
+	}
+}
+
 func (t *TarInfo) buildLayers() error {
 	for _, layerDigest := range t.LayersDigest {
 		oriLayerTar := filepath.Join("cache", "layers", layerDigest, "layer.tar")
@@ -128,12 +137,7 @@ func (t *TarInfo) buildConfigjson() error {
 	destConfigJson := filepath.Join(t.folderPath, t.ConfigDigest+".json")
 
 	// copy file
-	err := CopyFile(oriConfigJson, destConfigJson)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return CopyFile(oriConfigJson, destConfigJson)
 }
 
 type Schema2Manifest struct {
