@@ -76,7 +76,7 @@ func CreateTar(srcDir, tarFilePath string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println("打包成功: output.tar")
+	log.Println("package success")
 
 	return nil
 }

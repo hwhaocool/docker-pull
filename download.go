@@ -60,8 +60,8 @@ func DownloadImage(cmd Cmd) {
 	}
 
 	mediaType := manifest.GuessMIMEType(rawManifest)
-	fmt.Printf("Manifest Digest: %s\n", digest)
-	fmt.Printf("Media Type: %s\n", mediaType)
+	log.Printf("Manifest Digest: %s\n", digest)
+	log.Printf("Media Type: %s\n", mediaType)
 
 	// 5. 根据媒体类型解析具体 manifest
 	switch mediaType {
@@ -82,7 +82,15 @@ func DownloadImage(cmd Cmd) {
 		printManifestList(list)
 
 		// 下载
-		downloadWithList(ref, list, src, ctx, imageinfo)
+		d := &Downloader{
+			ref:         ref,
+			src:         src,
+			ctx:         ctx,
+			schema2List: list,
+			imageInfo:   imageinfo,
+			cmd:         cmd,
+		}
+		d.downloadWithList()
 
 	default:
 		log.Fatalf("Unsupported manifest type: %s", mediaType)
@@ -129,21 +137,29 @@ func printManifestList(list manifest.Schema2List) {
 	}
 }
 
-func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src types.ImageSource,
-	ctx context.Context, imageInfo DockerImageV2) {
+type Downloader struct {
+	ref         types.ImageReference
+	src         types.ImageSource
+	ctx         context.Context
+	schema2List manifest.Schema2List
+	imageInfo   DockerImageV2
 
-	for _, m := range list.Manifests {
+	cmd Cmd
+}
+
+func (d *Downloader) downloadWithList() {
+
+	for _, m := range d.schema2List.Manifests {
 
 		switch m.MediaType {
 		case ocispec.MediaTypeImageManifest:
 
-			if m.Platform.Architecture == "amd64" && m.Platform.OS == "linux" {
-				fmt.Printf("  Architecture: %s\n", m.Platform.Architecture)
+			if m.Platform.Architecture == d.cmd.arch && m.Platform.OS == "linux" {
 
-				log.Println("Downloading manifest for amd64/linux:", m.Digest.String())
+				log.Printf("Downloading manifest for %s/linux: %s\n", d.cmd.arch, m.Digest.String())
 
 				// raw是字节数组， 第二个是 content type
-				raw, _, err := src.GetManifest(ctx, &m.Digest)
+				raw, _, err := d.src.GetManifest(d.ctx, &m.Digest)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -155,16 +171,17 @@ func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src t
 				}
 
 				// 下载 config
-				downloadConfigBlob(src, man.ConfigDescriptor, ctx)
+				d.downloadConfigBlob(man.ConfigDescriptor)
 
 				// 下载 layers
-				downloadLayersBlob(src, man.LayersDescriptors, ctx)
+				d.downloadLayersBlob(man.LayersDescriptors)
 
 				// 构造tar包
 				(&TarInfo{
-					Ref:          ref,
-					ImageInfo:    imageInfo,
+					Ref:          d.ref,
+					ImageInfo:    d.imageInfo,
 					ConfigDigest: strings.TrimPrefix(man.ConfigDescriptor.Digest.String(), "sha256:"),
+					Arch:         d.cmd.arch,
 					LayersDigest: func() []string {
 						var layers []string
 						for _, layer := range man.LayersDescriptors {
@@ -180,20 +197,20 @@ func downloadWithList(ref types.ImageReference, list manifest.Schema2List, src t
 	}
 }
 
-func downloadLayersBlob(src types.ImageSource, schema2Descriptor []manifest.Schema2Descriptor, ctx context.Context) {
+func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Descriptor) {
 	log.Println("Downloading layers blob")
 	for _, desc := range schema2Descriptor {
-		downloadBlob(ctx, src, desc, SaveProps{
+		d.downloadBlob(desc, SaveProps{
 			path: "layers",
 			name: "layer.tar",
 		})
 	}
 }
 
-func downloadConfigBlob(src types.ImageSource, configDescriptor manifest.Schema2Descriptor, ctx context.Context) {
+func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descriptor) {
 
 	log.Println("Downloading config blob", configDescriptor.Digest.String())
-	downloadBlob(ctx, src, configDescriptor, SaveProps{
+	d.downloadBlob(configDescriptor, SaveProps{
 		path: "config",
 		name: "config.json",
 	})
@@ -204,7 +221,7 @@ type SaveProps struct {
 	name string
 }
 
-func downloadBlob(ctx context.Context, src types.ImageSource, desc manifest.Schema2Descriptor, saveProps SaveProps) error {
+func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps SaveProps) error {
 	// 创建 blob 文件夹
 	blobPath := filepath.Join("cache", saveProps.path, strings.TrimPrefix(desc.Digest.String(), "sha256:"))
 
@@ -218,7 +235,7 @@ func downloadBlob(ctx context.Context, src types.ImageSource, desc manifest.Sche
 
 	// 检查文件是否已存在
 	if FileExists(tarFilePath) {
-		fmt.Printf("Blob already exists, skipping: %s\n", desc.Digest)
+		log.Printf("Blob already exists, skipping: %s\n", desc.Digest)
 		return nil
 	}
 
@@ -230,7 +247,7 @@ func downloadBlob(ctx context.Context, src types.ImageSource, desc manifest.Sche
 	defer tarFile.Close()
 
 	// 获取 blob 读取器
-	blobReader, size, err := src.GetBlob(ctx, types.BlobInfo{
+	blobReader, size, err := d.src.GetBlob(d.ctx, types.BlobInfo{
 		Digest: desc.Digest,
 		Size:   desc.Size,
 	}, none.NoCache)
@@ -253,47 +270,8 @@ func downloadBlob(ctx context.Context, src types.ImageSource, desc manifest.Sche
 		return fmt.Errorf("blob size mismatch: expected %d, got %d", size, copied)
 	}
 
-	fmt.Printf("  Successfully downloaded blob: %s (%d bytes)\n", desc.Digest, copied)
+	log.Printf("  Successfully downloaded blob: %s (%d bytes)\n", desc.Digest, copied)
 	return nil
-}
-func downloadWithList2(list *manifest.OCI1Index) {
-
-	for _, m := range list.Manifests {
-
-		switch m.MediaType {
-		case ocispec.MediaTypeImageManifest:
-
-			if m.Annotations != nil {
-				for key, value := range m.Annotations {
-					fmt.Printf("  %s: %s\n", key, value)
-
-					// ocispec.Arch
-				}
-			}
-		}
-
-	}
-}
-
-func convertToOCIIndex(rawManifest []byte) {
-	// 转换为 OCI Index
-	ociIndex, err := manifest.OCI1IndexFromManifest(rawManifest)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// 现在 ociIndex 是 *ocispec.Index 类型
-	fmt.Printf("OCI Index: %+v\n", ociIndex)
-
-	// 访问 annotations
-	for i, desc := range ociIndex.Manifests {
-		fmt.Printf("\nManifest %d Annotations:\n", i+1)
-		if desc.Annotations != nil {
-			for key, value := range desc.Annotations {
-				fmt.Printf("  %s: %s\n", key, value)
-			}
-		}
-	}
 }
 
 type Schema2ListPublic struct {
