@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"context"
 
@@ -182,11 +183,15 @@ func (d *Downloader) downloadWithList() {
 					log.Fatalf("Failed to unmarshal manifest: %v", err)
 				}
 
+				var wg sync.WaitGroup
+
 				// 下载 config
-				d.downloadConfigBlob(man.ConfigDescriptor)
+				d.downloadConfigBlob(man.ConfigDescriptor, &wg)
 
 				// 下载 layers
-				d.downloadLayersBlob(man.LayersDescriptors)
+				d.downloadLayersBlob(man.LayersDescriptors, &wg)
+
+				wg.Wait()
 
 				// 构造tar包
 				(&TarInfo{
@@ -209,23 +214,27 @@ func (d *Downloader) downloadWithList() {
 	}
 }
 
-func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Descriptor) {
-	log.Println("Downloading layers blob")
+func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Descriptor, wg *sync.WaitGroup) {
 	for _, desc := range schema2Descriptor {
-		d.downloadBlob(desc, SaveProps{
+		log.Println(color.HiCyanString("Downloading layers %s", strings.TrimPrefix(desc.Digest.String(), "sha256:")[:16]))
+
+		wg.Add(1)
+		go d.downloadBlob(desc, SaveProps{
 			path: "layers",
 			name: "layer.tar",
-		})
+		}, wg)
 	}
 }
 
-func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descriptor) {
+func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descriptor, wg *sync.WaitGroup) {
 
-	log.Println("Downloading config blob", configDescriptor.Digest.String())
-	d.downloadBlob(configDescriptor, SaveProps{
+	log.Println(color.HiCyanString("Downloading config %s", strings.TrimPrefix(configDescriptor.Digest.String(), "sha256:")[:16]))
+
+	wg.Add(1)
+	go d.downloadBlob(configDescriptor, SaveProps{
 		path: "config",
 		name: "config.json",
-	})
+	}, wg)
 }
 
 type SaveProps struct {
@@ -233,7 +242,9 @@ type SaveProps struct {
 	name string
 }
 
-func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps SaveProps) error {
+func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps SaveProps, wg *sync.WaitGroup) error {
+	defer wg.Done()
+
 	// 创建 blob 文件夹
 	blobPath := filepath.Join("cache", saveProps.path, strings.TrimPrefix(desc.Digest.String(), "sha256:"))
 

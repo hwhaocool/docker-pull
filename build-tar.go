@@ -88,7 +88,8 @@ func (t *TarInfo) packTar() error {
 	if err != nil {
 		return fmt.Errorf("failed to create tar file: %v", err)
 	}
-	color.HiMagenta("Successfully created tar:  %s", tarFilePath)
+
+	log.Println(color.HiMagentaString("Successfully created tar:  %s", tarFilePath))
 	return nil
 }
 
