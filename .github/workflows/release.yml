@@ -74,12 +74,19 @@ jobs:
           # 返回项目根目录
           cd ..
 
-      - name: Upload Release Assets
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
-          name: Release ${{ github.ref_name }}
+      # - name: Upload Release Assets
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     files: |
+      #       ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+      #     name: Release ${{ github.ref_name }}
           
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 发布release版本
+      - name: Release version
+        uses: ncipollo/release-action@v1
+        with:
+          artifacts: ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
