@@ -8,11 +8,15 @@
 
 ## 使用说明
 ```
-docker-pull -image 镜像 
+docker-pull -arch amd64/arm64 -image 镜像 
 ```
 
 参数：
+```
 -image 镜像名称，支持如 `alpine:3.22.1`; `nginx`; `library/nginx:1.20`; `docker.io/library/nginx:latest`; `myregistry.com/myproject/myapp:v1.0`; `myregistry.com:5000/myproject/myapp:v1.0` 等格式
+
+-arch 架构，可选 amd64/arm64;默认 amd64
+```
 
 
 1. 镜像默认保存到当前目录下的 `output/{namespace}/{repository}`里面
@@ -20,5 +24,9 @@ docker-pull -image 镜像
 3. 组装tar包的时候，会把相关的文件复制到`tmp`目录下
 2. 如果 registry 需要鉴权，会自动鉴权
 
->> 目前仅支持下载 amd64+linux 的镜像，其他架构和系统待支持中
+>> 目前不支持代理，待实现
 
+## 目录说明
+1. cache 缓存，包括confi和layer
+2. output 输出
+3. tmp 临时目录
