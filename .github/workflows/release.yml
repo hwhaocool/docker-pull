@@ -1,0 +1,76 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 匹配所有以 v 开头的 tag（如 v1.0.0）
+
+jobs:
+  build:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # 定义构建矩阵：4 种组合
+        goos: [linux, windows]
+        goarch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.1' # 指定你的 Go 版本
+
+      - name: Prepare build variables
+        id: prep
+        run: |
+          # 提取版本号（去掉 'v' 前缀）
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "APP_NAME=docker-pull" >> $GITHUB_ENV
+          
+          # 根据系统确定文件扩展名
+          if [ "${{ matrix.goos }}" = "windows" ]; then
+            echo "BINARY_EXT=.exe" >> $GITHUB_ENV
+          else
+            echo "BINARY_EXT=" >> $GITHUB_ENV
+          fi
+
+      - name: Build binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          # 构建二进制文件
+          BINARY_NAME="${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ env.BINARY_EXT }}"
+          
+          # 构建命令（添加版本信息示例）
+          go build -o "build/$BINARY_NAME" \
+            -ldflags="-X 'main.Version=${{ env.VERSION }}'" \
+            .
+
+      - name: Package artifacts
+        run: |
+          # 创建统一的包名
+          PACKAGE_NAME="${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip"
+          
+          # 进入构建目录
+          cd build
+          
+          # 添加二进制文件到zip
+          zip -r "../$PACKAGE_NAME" .
+          
+          # 返回项目根目录
+          cd ..
+
+      - name: Upload Release Assets
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.zip
+          name: Release ${{ github.ref_name }}
+          
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
