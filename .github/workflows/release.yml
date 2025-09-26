@@ -24,7 +24,7 @@ jobs:
           go-version: '1.24.1' # 指定你的 Go 版本
 
       - name: Download dependencies
-        run: go mod download
+        run: go mod download json
 
       - name: Prepare build variables
         id: prep
@@ -46,8 +46,14 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
+          # 创建构建目录
+          mkdir -p build
+
           # 构建二进制文件
           BINARY_NAME="${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}${{ env.BINARY_EXT }}"
+
+          echo "Building for ${{ matrix.goos }}/${{ matrix.goarch }}..."
+          echo "Binary name: $BINARY_NAME"
           
           # 构建命令（添加版本信息示例）
           go build -o "build/$BINARY_NAME" \
