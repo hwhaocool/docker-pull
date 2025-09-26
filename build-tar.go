@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/fatih/color"
+
 	"github.com/containers/image/v5/types"
 )
 
@@ -86,7 +88,7 @@ func (t *TarInfo) packTar() error {
 	if err != nil {
 		return fmt.Errorf("failed to create tar file: %v", err)
 	}
-	log.Printf("Successfully created tar: %s\n", tarFilePath)
+	color.HiMagenta("Successfully created tar:  %s", tarFilePath)
 	return nil
 }
 
