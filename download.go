@@ -71,7 +71,7 @@ func DownloadImage(cmd Cmd) {
 		if err := json.Unmarshal(rawManifest, &man); err != nil {
 			log.Fatalf("Failed to unmarshal manifest: %v", err)
 		}
-		printSchema2Manifest(man)
+		// printSchema2Manifest(man)
 
 	case manifest.DockerV2ListMediaType, ocispec.MediaTypeImageIndex:
 		// 解析为 Manifest List
@@ -79,7 +79,7 @@ func DownloadImage(cmd Cmd) {
 		if err := json.Unmarshal(rawManifest, &list); err != nil {
 			log.Fatalf("Failed to unmarshal manifest list: %v", err)
 		}
-		printManifestList(list)
+		// printManifestList(list)
 
 		// 下载
 		d := &Downloader{
