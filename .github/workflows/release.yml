@@ -23,6 +23,9 @@ jobs:
         with:
           go-version: '1.24.1' # 指定你的 Go 版本
 
+      - name: Download dependencies
+        run: go mod download
+
       - name: Prepare build variables
         id: prep
         run: |
