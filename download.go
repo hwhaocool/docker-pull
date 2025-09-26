@@ -15,6 +15,7 @@ import (
 	"github.com/containers/image/v5/pkg/blobinfocache/none"
 	"github.com/containers/image/v5/types"
 
+	"github.com/fatih/color"
 	"github.com/sirupsen/logrus"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -39,6 +40,7 @@ func DownloadImage(cmd Cmd) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	printImageInfo(imageinfo)
 
 	// 2. 创建镜像源
 	src, err := ref.NewImageSource(ctx, sysCtx)
@@ -95,6 +97,16 @@ func DownloadImage(cmd Cmd) {
 	default:
 		log.Fatalf("Unsupported manifest type: %s", mediaType)
 	}
+}
+
+func printImageInfo(info DockerImageV2) {
+	color.HiCyan("Image Info:")
+	color.HiCyan("  Domain: %s", info.Domain)
+	color.HiCyan("  Path: %s", info.Path)
+	color.HiCyan("  Tag: %s", info.Tag)
+	color.HiCyan("  Name: %s", info.Name)
+	color.HiCyan("  Namespace: %s", info.Namespace)
+	color.HiCyan("  Repository: %s", info.Repository)
 }
 
 func printSchema2Manifest(man manifest.Schema2) {
