@@ -14,6 +14,11 @@ jobs:
         # 定义构建矩阵：4 种组合
         goos: [linux, windows]
         goarch: [amd64, arm64]
+
+    # 需要设置写权限才能自动发布
+    permissions:
+      contents: write
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
