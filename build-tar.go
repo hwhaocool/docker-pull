@@ -15,6 +15,8 @@ type TarInfo struct {
 	LayersDigest []string
 	ImageInfo    DockerImageV2
 
+	Arch string
+
 	folderPath string
 }
 
@@ -71,27 +73,39 @@ func (t *TarInfo) packTar() error {
 
 	tarFilePath := t.buildTarName()
 
-	// 检查文件是否已存在
+	// 检查文件是否已存在; 存在就删除
 	if FileExists(tarFilePath) {
-		fmt.Printf("Tar already exists, skipping: %s\n", tarFilePath)
-		return nil
+		err := os.Remove(tarFilePath)
+		if err != nil {
+			log.Fatalf("Failed to remove tar: %v", err)
+			return err
+		}
 	}
+
 	err := CreateTar(t.folderPath, tarFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to create tar file: %v", err)
 	}
-	fmt.Printf("  Successfully created tar: %s\n", tarFilePath)
+	log.Printf("Successfully created tar: %s\n", tarFilePath)
 	return nil
 }
 
 func (t *TarInfo) buildTarName() string {
-	name := fmt.Sprintf("%s_%s_%s.tar", t.ImageInfo.Name, t.ImageInfo.Tag, t.ConfigDigest)
+	name := fmt.Sprintf("%s_%s_%s_%s.tar", t.ImageInfo.Name, t.ImageInfo.Tag, t.Arch, t.ConfigDigest[:32])
 	return filepath.Join("output", t.ImageInfo.Namespace, t.ImageInfo.Repository, name)
 }
 
 func (t *TarInfo) mkdirTmp() error {
 	// 创建 tmp 文件夹
 	tmpPath := filepath.Join("tmp", t.ConfigDigest)
+
+	// 存在就删除重建
+	if FileExists(tmpPath) {
+		err := os.RemoveAll(tmpPath)
+		if err != nil {
+			return fmt.Errorf("failed to remove tmp folder: %v", err)
+		}
+	}
 
 	err := os.MkdirAll(tmpPath, 0755)
 	if err != nil {
@@ -153,7 +167,7 @@ func (t *TarInfo) buildManifestjson() error {
 
 	// 检查文件是否已存在
 	if FileExists(filePath) {
-		fmt.Printf("file already exists, skipping: %s\n", filePath)
+		log.Printf("file already exists, skipping: %s\n", filePath)
 		return nil
 	}
 
@@ -188,7 +202,7 @@ func (t *TarInfo) buildRepositoriesjson() error {
 
 	// 检查文件是否已存在
 	if FileExists(repoFilePath) {
-		fmt.Printf("Blob already exists, skipping: %s\n", repoFilePath)
+		log.Printf("Blob already exists, skipping: %s\n", repoFilePath)
 		return nil
 	}
 
