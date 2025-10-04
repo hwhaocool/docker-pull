@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/url"
 
 	"github.com/fatih/color"
 )
@@ -14,12 +15,13 @@ func main() {
 	color.HiMagenta("docker-pull version: %s", Version)
 	var image, proxyAddr, destination, arch string
 
-	flag.StringVar(&image, "image", "", "镜像名称, 支持如 alpine:3.22.1; nginx; library/nginx:1.20; docker.io/library/nginx:latest; myregistry.com/myproject/myapp:v1.0; myregistry.com:5000/myproject/myapp:v1.0 等格式")
+	flag.StringVar(&image, "image", "sls-opensource-registry.cn-shanghai.cr.aliyuncs.com/loongcollector-community-edition/loongcollector:3.1.4", "镜像名称, 支持如 alpine:3.22.1; nginx; library/nginx:1.20; docker.io/library/nginx:latest; myregistry.com/myproject/myapp:v1.0; myregistry.com:5000/myproject/myapp:v1.0 等格式")
 
 	flag.StringVar(&arch, "arch", "amd64", "cpu架构, 可选 amd64, arm64, 默认 amd64")
 
-	// TODO: 以后支持代理下载
-	// flag.StringVar(&proxyAddr, "proxy", "", "socks5代理地址")
+	flag.StringVar(&proxyAddr, "proxy", "", "代理地址, 支持 socks5://username:password@ip:port 或者 http://username:password@ip:port； 也支持不带认证的代理，如 socks5://ip:port 或者 http://ip:port")
+
+	// TODO: 待支持
 	// flag.StringVar(&destination, "dst", "output", "镜像保存路径")
 
 	flag.Parse()
@@ -28,9 +30,19 @@ func main() {
 		log.Fatal("必须提供 -image 参数")
 	}
 
+	var proxyURL *url.URL
+	var err error
+	if proxyAddr != "" {
+		// 解析 proxy URL
+		proxyURL, err = url.Parse(proxyAddr)
+		if err != nil {
+			log.Fatal("proxy参数格式错误", err)
+		}
+	}
+
 	cmd := Cmd{
 		image:       image,
-		proxyAddr:   proxyAddr,
+		proxy:       proxyURL,
 		destination: destination,
 		arch:        arch,
 	}
@@ -48,7 +60,7 @@ func main() {
 
 type Cmd struct {
 	image       string
-	proxyAddr   string
+	proxy       *url.URL
 	destination string
-	arch        string
+	arch        string // cpu架构, 可选 amd64, arm64
 }

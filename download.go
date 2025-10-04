@@ -30,7 +30,9 @@ func init() {
 func DownloadImage(cmd Cmd) {
 
 	ctx := context.Background()
-	sysCtx := &types.SystemContext{}
+	sysCtx := &types.SystemContext{
+		DockerProxyURL: cmd.proxy, // 设置代理
+	}
 
 	// 创建 Docker 引用
 	if !strings.HasPrefix(cmd.image, "//") {
