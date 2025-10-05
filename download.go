@@ -17,15 +17,9 @@ import (
 	"github.com/containers/image/v5/types"
 
 	"github.com/fatih/color"
-	"github.com/sirupsen/logrus"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
-
-func init() {
-	// 设置日志级别
-	logrus.SetLevel(logrus.DebugLevel)
-}
 
 func DownloadImage(cmd Cmd) {
 
@@ -186,14 +180,29 @@ func (d *Downloader) downloadWithList() {
 				}
 
 				var wg sync.WaitGroup
+				errChan := make(chan error, len(man.LayersDescriptors)+1)
 
 				// 下载 config
-				d.downloadConfigBlob(man.ConfigDescriptor, &wg)
+				d.downloadConfigBlob(man.ConfigDescriptor, &wg, errChan)
 
 				// 下载 layers
-				d.downloadLayersBlob(man.LayersDescriptors, &wg)
+				d.downloadLayersBlob(man.LayersDescriptors, &wg, errChan)
 
 				wg.Wait()
+
+				// 收集所有错误
+				close(errChan)
+				hasError := false
+				for err := range errChan {
+					if err != nil {
+						log.Printf("Error occurred: %v", err)
+						hasError = true
+					}
+				}
+				// 如果有错误，则退出程序
+				if hasError {
+					log.Fatal("Errors occurred during download, see logs above.")
+				}
 
 				// 构造tar包
 				(&TarInfo{
@@ -216,27 +225,51 @@ func (d *Downloader) downloadWithList() {
 	}
 }
 
-func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Descriptor, wg *sync.WaitGroup) {
+func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Descriptor, wg *sync.WaitGroup, errChan chan error) {
 	for _, desc := range schema2Descriptor {
 		log.Println(color.HiCyanString("Downloading layers %s", strings.TrimPrefix(desc.Digest.String(), "sha256:")[:16]))
 
 		wg.Add(1)
-		go d.downloadBlob(desc, SaveProps{
-			path: "layers",
-			name: "layer.tar",
-		}, wg)
+		go func(errChan chan error) {
+			defer wg.Done()
+
+			blobPath, err := d.downloadBlob(desc, SaveProps{
+				path: "layers",
+				name: "layer.tar",
+			})
+			if err != nil {
+				errChan <- err
+
+				err2 := os.RemoveAll(blobPath)
+				if err2 != nil {
+					log.Printf("Failed to remove blob file: %v\n", err2)
+				}
+			}
+		}(errChan)
 	}
 }
 
-func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descriptor, wg *sync.WaitGroup) {
+func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descriptor, wg *sync.WaitGroup, errChan chan error) {
 
 	log.Println(color.HiCyanString("Downloading config %s", strings.TrimPrefix(configDescriptor.Digest.String(), "sha256:")[:16]))
 
 	wg.Add(1)
-	go d.downloadBlob(configDescriptor, SaveProps{
-		path: "config",
-		name: "config.json",
-	}, wg)
+	go func(errChan chan error) {
+		defer wg.Done()
+		blobPath, err := d.downloadBlob(configDescriptor, SaveProps{
+			path: "config",
+			name: "config.json",
+		})
+		if err != nil {
+
+			errChan <- err
+
+			err2 := os.RemoveAll(blobPath)
+			if err2 != nil {
+				log.Printf("Failed to remove blob file: %v\n", err2)
+			}
+		}
+	}(errChan)
 }
 
 type SaveProps struct {
@@ -244,15 +277,14 @@ type SaveProps struct {
 	name string
 }
 
-func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps SaveProps, wg *sync.WaitGroup) error {
-	defer wg.Done()
+func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps SaveProps) (string, error) {
 
 	// 创建 blob 文件夹
 	blobPath := filepath.Join("cache", saveProps.path, strings.TrimPrefix(desc.Digest.String(), "sha256:"))
 
 	err := os.MkdirAll(blobPath, 0755)
 	if err != nil {
-		log.Fatalf("创建目录失败: %v", err)
+		return blobPath, fmt.Errorf("create folder failed: %v", err)
 	}
 
 	// blob 文件
@@ -261,13 +293,13 @@ func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps Sav
 	// 检查文件是否已存在
 	if FileExists(tarFilePath) {
 		log.Printf("Blob already exists, skipping: %s\n", desc.Digest)
-		return nil
+		return blobPath, nil
 	}
 
 	// 创建目标文件
 	tarFile, err := os.Create(tarFilePath)
 	if err != nil {
-		return fmt.Errorf("failed to create blob file: %v", err)
+		return blobPath, fmt.Errorf("failed to create blob file: %v", err)
 	}
 	defer tarFile.Close()
 
@@ -278,25 +310,23 @@ func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps Sav
 	}, none.NoCache)
 
 	if err != nil {
-		os.Remove(tarFilePath)
-		log.Fatal("failed to get blob reader:", err)
-		return fmt.Errorf("failed to get blob reader: %v", err)
+		return blobPath, fmt.Errorf("failed to get blob reader: %v", err)
 	}
 	defer blobReader.Close()
 
 	// 复制 blob 内容
 	copied, err := io.Copy(tarFile, blobReader)
 	if err != nil {
-		return fmt.Errorf("failed to copy blob content: %v", err)
+		return blobPath, fmt.Errorf("failed to copy blob content: %v", err)
 	}
 
 	// 验证大小
 	if copied != size {
-		return fmt.Errorf("blob size mismatch: expected %d, got %d", size, copied)
+		return blobPath, fmt.Errorf("blob size mismatch: expected %d, got %d", size, copied)
 	}
 
 	log.Printf("  Successfully downloaded blob: %s (%d bytes)\n", desc.Digest, copied)
-	return nil
+	return blobPath, nil
 }
 
 type Schema2ListPublic struct {

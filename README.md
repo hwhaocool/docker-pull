@@ -22,7 +22,8 @@ docker-pull -arch amd64/arm64 -image 镜像
 1. 镜像默认保存到当前目录下的 `output/{namespace}/{repository}`里面
 2. layers的缓存目录是当前文件夹下的 `cache`; 其中 `layers`是`layer`， `config`是`config`
 3. 组装tar包的时候，会把相关的文件复制到`tmp`目录下
-2. 如果 registry 需要鉴权，会自动鉴权
+4. 如果 registry 需要鉴权，会自动鉴权
+5. 如果失败，可以反复尝试（下载过程中，如果成功，文件会保留，下次跳过；如果失败，cache会删除）
 
 >> 目前不支持代理，待实现
 
