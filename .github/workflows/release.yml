@@ -60,10 +60,9 @@ jobs:
 
           go mod download
           
-          # 构建命令（添加版本信息示例）
-          go build -o "build/$BINARY_NAME" \
-            -ldflags="-X 'main.Version=${{ env.VERSION }}'" \
-            .
+          # 构建命令-静态链接+版本号
+          
+          go build -o "build/$BINARY_NAME" -a -ldflags '-extldflags "-static" -X main.Version=${{ env.VERSION }}' .
 
       - name: Package artifacts
         run: |
