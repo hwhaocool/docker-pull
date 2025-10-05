@@ -15,7 +15,8 @@ docker-pull -arch amd64/arm64 -image 镜像
 ```
 -image 镜像名称，支持如 `alpine:3.22.1`; `nginx`; `library/nginx:1.20`; `docker.io/library/nginx:latest`; `myregistry.com/myproject/myapp:v1.0`; `myregistry.com:5000/myproject/myapp:v1.0` 等格式
 
--arch 架构，可选 amd64/arm64;默认 amd64
+-arch 架构，可选 `amd64`/`arm64`;默认 `amd64`
+-proxy 代理，格式 `socks5://ip:port`, 协议支持socks5, http, https,如果有鉴权，格式为 `http://username:password@ip:port`
 ```
 
 
@@ -25,7 +26,6 @@ docker-pull -arch amd64/arm64 -image 镜像
 4. 如果 registry 需要鉴权，会自动鉴权
 5. 如果失败，可以反复尝试（下载过程中，如果成功，文件会保留，下次跳过；如果失败，cache会删除）
 
->> 目前不支持代理，待实现
 
 ## 目录说明
 1. cache 缓存，包括confi和layer
