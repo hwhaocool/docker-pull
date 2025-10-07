@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"log"
 	"net/url"
 
 	"github.com/fatih/color"
@@ -27,7 +26,7 @@ func main() {
 	flag.Parse()
 
 	if image == "" {
-		log.Fatal("必须提供 -image 参数")
+		Logger.Fatal("必须提供 -image 参数")
 	}
 
 	var proxyURL *url.URL
@@ -36,7 +35,7 @@ func main() {
 		// 解析 proxy URL
 		proxyURL, err = url.Parse(proxyAddr)
 		if err != nil {
-			log.Fatal("proxy参数格式错误", err)
+			Logger.Fatal("proxy参数格式错误", err)
 		}
 	}
 
@@ -46,12 +45,6 @@ func main() {
 		destination: destination,
 		arch:        arch,
 	}
-
-	// 确保目标目录存在
-	// err := os.MkdirAll(destination, 0755)
-	// if err != nil {
-	// 	log.Fatalf("创建目录失败: %v", err)
-	// }
 
 	DownloadImage(cmd)
 

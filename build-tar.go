@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -26,8 +25,7 @@ func (t *TarInfo) BuildTar() {
 
 	err := t.mkdirTmp()
 	if err != nil {
-		log.Fatalf("Failed to create tmp directory: %v", err)
-
+		Logger.Fatalf("Failed to create tmp directory: %v", err)
 		return
 	}
 
@@ -36,21 +34,21 @@ func (t *TarInfo) BuildTar() {
 	// 根目录生成 xx.json
 	err = t.buildConfigjson()
 	if err != nil {
-		log.Fatalf("Failed to build config.json: %v", err)
+		Logger.Fatalf("Failed to build config.json: %v", err)
 
 		return
 	}
 
 	err = t.buildLayers()
 	if err != nil {
-		log.Fatalf("Failed to build layers: %v", err)
+		Logger.Fatalf("Failed to build layers: %v", err)
 
 		return
 	}
 
 	err = t.buildRepositoriesjson()
 	if err != nil {
-		log.Fatalf("Failed to build repositories.json: %v", err)
+		Logger.Fatalf("Failed to build repositories.json: %v", err)
 
 		return
 	}
@@ -58,14 +56,14 @@ func (t *TarInfo) BuildTar() {
 	// 根目录生成 manifest.json
 	err = t.buildManifestjson()
 	if err != nil {
-		log.Fatalf("Failed to build manifest.json: %v", err)
+		Logger.Fatalf("Failed to build manifest.json: %v", err)
 
 		return
 	}
 
 	err = t.packTar()
 	if err != nil {
-		log.Fatalf("Failed to pack tar: %v", err)
+		Logger.Fatalf("Failed to pack tar: %v", err)
 
 		return
 	}
@@ -79,7 +77,7 @@ func (t *TarInfo) packTar() error {
 	if FileExists(tarFilePath) {
 		err := os.Remove(tarFilePath)
 		if err != nil {
-			log.Fatalf("Failed to remove tar: %v", err)
+			Logger.Fatalf("Failed to remove tar: %v", err)
 			return err
 		}
 	}
@@ -89,7 +87,7 @@ func (t *TarInfo) packTar() error {
 		return fmt.Errorf("failed to create tar file: %v", err)
 	}
 
-	log.Println(color.HiMagentaString("Successfully created tar:  %s", tarFilePath))
+	Logger.Info(color.HiMagentaString("Successfully created tar:  %s", tarFilePath))
 	return nil
 }
 
@@ -123,7 +121,7 @@ func (t *TarInfo) mkdirTmp() error {
 func (t *TarInfo) delTmp() {
 	err := os.RemoveAll(t.folderPath)
 	if err != nil {
-		log.Println("Warning: failed to delete tmp directory:", err)
+		Logger.Info("Warning: failed to delete tmp directory:", err)
 	}
 }
 
@@ -170,7 +168,7 @@ func (t *TarInfo) buildManifestjson() error {
 
 	// 检查文件是否已存在
 	if FileExists(filePath) {
-		log.Printf("file already exists, skipping: %s\n", filePath)
+		Logger.Infof("file already exists, skipping: %s\n", filePath)
 		return nil
 	}
 
@@ -205,7 +203,7 @@ func (t *TarInfo) buildRepositoriesjson() error {
 
 	// 检查文件是否已存在
 	if FileExists(repoFilePath) {
-		log.Printf("Blob already exists, skipping: %s\n", repoFilePath)
+		Logger.Infof("Blob already exists, skipping: %s\n", repoFilePath)
 		return nil
 	}
 

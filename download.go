@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,32 +34,32 @@ func DownloadImage(cmd Cmd) {
 
 	ref, imageinfo, err := ParseImageInfoV2(cmd.image)
 	if err != nil {
-		log.Fatal(err)
+		Logger.Fatal(err)
 	}
 	printImageInfo(imageinfo)
 
 	// 2. 创建镜像源
 	src, err := ref.NewImageSource(ctx, sysCtx)
 	if err != nil {
-		log.Fatalf("Failed to create image source: %v", err)
+		Logger.Fatalf("Failed to create image source: %v", err)
 	}
 	defer src.Close()
 
 	// 3. 获取原始 manifest 字节
 	rawManifest, _, err := src.GetManifest(ctx, nil)
 	if err != nil {
-		log.Fatalf("Failed to get manifest: %v", err)
+		Logger.Fatalf("Failed to get manifest: %v", err)
 	}
 
 	// 4. 解析 manifest
 	digest, err := manifest.Digest(rawManifest)
 	if err != nil {
-		log.Fatalf("Failed to compute digest: %v", err)
+		Logger.Fatalf("Failed to compute digest: %v", err)
 	}
 
 	mediaType := manifest.GuessMIMEType(rawManifest)
-	log.Printf("Manifest Digest: %s\n", digest)
-	log.Printf("Media Type: %s\n", mediaType)
+	Logger.Infoln("Manifest Digest:", digest)
+	Logger.Infoln("Media Type:", mediaType)
 
 	// 5. 根据媒体类型解析具体 manifest
 	switch mediaType {
@@ -68,7 +67,7 @@ func DownloadImage(cmd Cmd) {
 		// 解析为 Docker Schema 2 或 OCI Manifest
 		var man manifest.Schema2
 		if err := json.Unmarshal(rawManifest, &man); err != nil {
-			log.Fatalf("Failed to unmarshal manifest: %v", err)
+			Logger.Fatalf("Failed to unmarshal manifest: %v", err)
 		}
 		// printSchema2Manifest(man)
 
@@ -76,7 +75,7 @@ func DownloadImage(cmd Cmd) {
 		// 解析为 Manifest List
 		var list manifest.Schema2List
 		if err := json.Unmarshal(rawManifest, &list); err != nil {
-			log.Fatalf("Failed to unmarshal manifest list: %v", err)
+			Logger.Fatalf("Failed to unmarshal manifest list: %v", err)
 		}
 		// printManifestList(list)
 
@@ -92,7 +91,7 @@ func DownloadImage(cmd Cmd) {
 		d.downloadWithList()
 
 	default:
-		log.Fatalf("Unsupported manifest type: %s", mediaType)
+		Logger.Fatalf("Unsupported manifest type: %s", mediaType)
 	}
 }
 
@@ -165,18 +164,18 @@ func (d *Downloader) downloadWithList() {
 
 			if m.Platform.Architecture == d.cmd.arch && m.Platform.OS == "linux" {
 
-				log.Printf("Downloading manifest for %s/linux: %s\n", d.cmd.arch, m.Digest.String())
+				Logger.Infof("Downloading manifest for %s/linux: %s\n", d.cmd.arch, m.Digest.String())
 
 				// raw是字节数组， 第二个是 content type
 				raw, _, err := d.src.GetManifest(d.ctx, &m.Digest)
 				if err != nil {
-					log.Fatal(err)
+					Logger.Fatal(err)
 				}
 
 				// 解析为 Docker Schema 2
 				var man manifest.Schema2
 				if err := json.Unmarshal(raw, &man); err != nil {
-					log.Fatalf("Failed to unmarshal manifest: %v", err)
+					Logger.Fatalf("Failed to unmarshal manifest: %v", err)
 				}
 
 				var wg sync.WaitGroup
@@ -195,13 +194,13 @@ func (d *Downloader) downloadWithList() {
 				hasError := false
 				for err := range errChan {
 					if err != nil {
-						log.Printf("Error occurred: %v", err)
+						Logger.Errorf("Error occurred: %v", err)
 						hasError = true
 					}
 				}
 				// 如果有错误，则退出程序
 				if hasError {
-					log.Fatal("Errors occurred during download, see logs above.")
+					Logger.Fatal("Errors occurred during download, see logs above.")
 				}
 
 				// 构造tar包
@@ -227,7 +226,7 @@ func (d *Downloader) downloadWithList() {
 
 func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Descriptor, wg *sync.WaitGroup, errChan chan error) {
 	for _, desc := range schema2Descriptor {
-		log.Println(color.HiCyanString("Downloading layers %s", strings.TrimPrefix(desc.Digest.String(), "sha256:")[:16]))
+		Logger.Info(color.HiCyanString("Downloading layers %s", strings.TrimPrefix(desc.Digest.String(), "sha256:")[:16]))
 
 		wg.Add(1)
 		go func(errChan chan error) {
@@ -242,7 +241,7 @@ func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Desc
 
 				err2 := os.RemoveAll(blobPath)
 				if err2 != nil {
-					log.Printf("Failed to remove blob file: %v\n", err2)
+					Logger.Infof("Failed to remove blob file: %v\n", err2)
 				}
 			}
 		}(errChan)
@@ -251,7 +250,7 @@ func (d *Downloader) downloadLayersBlob(schema2Descriptor []manifest.Schema2Desc
 
 func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descriptor, wg *sync.WaitGroup, errChan chan error) {
 
-	log.Println(color.HiCyanString("Downloading config %s", strings.TrimPrefix(configDescriptor.Digest.String(), "sha256:")[:16]))
+	Logger.Info(color.HiCyanString("Downloading config %s", strings.TrimPrefix(configDescriptor.Digest.String(), "sha256:")[:16]))
 
 	wg.Add(1)
 	go func(errChan chan error) {
@@ -266,7 +265,7 @@ func (d *Downloader) downloadConfigBlob(configDescriptor manifest.Schema2Descrip
 
 			err2 := os.RemoveAll(blobPath)
 			if err2 != nil {
-				log.Printf("Failed to remove blob file: %v\n", err2)
+				Logger.Infof("Failed to remove blob file: %v\n", err2)
 			}
 		}
 	}(errChan)
@@ -292,7 +291,7 @@ func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps Sav
 
 	// 检查文件是否已存在
 	if FileExists(tarFilePath) {
-		log.Printf("Blob already exists, skipping: %s\n", desc.Digest)
+		Logger.Infof("Blob already exists, skipping: %s\n", desc.Digest)
 		return blobPath, nil
 	}
 
@@ -325,7 +324,7 @@ func (d *Downloader) downloadBlob(desc manifest.Schema2Descriptor, saveProps Sav
 		return blobPath, fmt.Errorf("blob size mismatch: expected %d, got %d", size, copied)
 	}
 
-	log.Printf("  Successfully downloaded blob: %s (%d bytes)\n", desc.Digest, copied)
+	Logger.Infof("  Successfully downloaded blob: %s (%d bytes)\n", desc.Digest, copied)
 	return blobPath, nil
 }
 

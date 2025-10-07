@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 
@@ -37,7 +36,7 @@ func CopyFile(src, dst string) error {
 
 	// 检查文件是否已存在
 	if FileExists(dst) {
-		fmt.Printf("dst already exists, skipping: %s\n", dst)
+		Logger.Infoln("dst already exists, skipping: ", dst)
 		return nil
 	}
 
@@ -47,13 +46,13 @@ func CopyFile(src, dst string) error {
 		return fmt.Errorf("failed to write file: %v", err)
 	}
 
-	fmt.Printf("Successfully copied file from [%s] to [%s] \n", src, dst)
+	Logger.Debugf("Successfully copied file from [%s] to [%s] \n", src, dst)
 
 	return nil
 }
 
 func CreateTar(srcDir, tarFilePath string) error {
-	log.Println("开始打包目录:", srcDir)
+	Logger.Info("开始打包目录:", srcDir)
 	// 创建目标目录
 	destDir := filepath.Dir(tarFilePath)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
@@ -74,9 +73,9 @@ func CreateTar(srcDir, tarFilePath string) error {
 	// 打包目录为 .tar 文件
 	err = archiver.Archive(files, tarFilePath)
 	if err != nil {
-		log.Fatal(err)
+		Logger.Fatal(err)
 	}
-	log.Println("package success")
+	Logger.Info("package success")
 
 	return nil
 }
