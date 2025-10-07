@@ -12,16 +12,17 @@ docker-pull -arch amd64/arm64 -image 镜像
 ```
 
 参数：
-```
--image 镜像名称，支持如 `alpine:3.22.1`; `nginx`; `library/nginx:1.20`; `docker.io/library/nginx:latest`; `myregistry.com/myproject/myapp:v1.0`; `myregistry.com:5000/myproject/myapp:v1.0` 等格式
 
--arch 架构，可选 `amd64`/`arm64`;默认 `amd64`
--proxy 代理，格式 `socks5://ip:port`, 协议支持socks5, http, https,如果有鉴权，格式为 `http://username:password@ip:port`
-```
+| 参数 | 说明 | 默认值 | 可选值/格式 |
+|-----|-----|------|-------------|
+| `-image` | 镜像名称 | 无默认值<br>必填 | `alpine:3.22.1`<br>`nginx`<br>`library/nginx:1.20`<br>`docker.io/library/nginx:latest`<br>`myregistry.com/myproject/myapp:v1.0`<br>`myregistry.com:5000/myproject/myapp:v1.0` |
+| `-arch` | 架构 | `amd64` | `amd64` / `arm64` |
+| `-proxy` | 代理设置 | 无代理 | `socks5://ip:port`<br>`http://ip:port`<br>`https://ip:port`<br>`http://username:password@ip:port (鉴权格式)` |
+
 
 
 1. 镜像默认保存到当前目录下的 `output/{namespace}/{repository}`里面
-2. layers的缓存目录是当前文件夹下的 `cache`; 其中 `layers`是`layer`， `config`是`config`
+2. 有一个缓存目录是 `cache`; 其中 由`layer`，和 `config`，在多次下载的时候可以加速；如果觉得占用磁盘可以手动删除，不影响功能
 3. 组装tar包的时候，会把相关的文件复制到`tmp`目录下
 4. 如果 registry 需要鉴权，会自动鉴权
 5. 如果失败，可以反复尝试（下载过程中，如果成功，文件会保留，下次跳过；如果失败，cache会删除）
